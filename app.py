@@ -7,6 +7,7 @@ import re
 import shlex
 import subprocess
 import time
+import uuid
 from pathlib import Path
 from typing import Any, AsyncIterator
 from urllib.parse import urlparse
@@ -304,6 +305,11 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
                                     acc["function"]["arguments"] += fn["arguments"]
                         content = "".join(content_parts)
                         calls = [tool_acc[i] for i in sorted(tool_acc)]
+                        # Some OpenAI-compatible servers omit tool-call IDs. Normalize them
+                        # before appending the assistant message so every tool result matches.
+                        for call in calls:
+                            if not call.get("id"):
+                                call["id"] = f"call_{uuid.uuid4().hex}"
                 except httpx.RequestError as e:
                     yield sse("error", {"message": f"Could not connect to KoboldCpp at {base}: {e}"})
                     return
@@ -314,13 +320,16 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
                 messages.append(assistant_message)
 
                 if not calls:
+                    if finish_reason == "tool_calls":
+                        yield sse("error", {"message": "KoboldCpp indicated a tool call, but no complete tool call was received. Check the model chat template and KoboldCpp tool-calling settings."})
+                        return
                     yield sse("done", {"message": content, "messages": messages[-40:]})
                     return
 
                 for call in calls:
-                    call_id = call.get("id") or f"call_{int(time.time()*1000)}"
+                    call_id = call["id"]
                     fn = call.get("function") or {}
-                    name = fn.get("name", "")
+                    name = str(fn.get("name") or "").strip()
                     raw_args = fn.get("arguments", "{}")
                     try:
                         args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
@@ -339,7 +348,9 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
                             approved = await asyncio.wait_for(fut, timeout=300)
                         except asyncio.TimeoutError:
                             approved = False
-                        pending_approvals.pop(approval_id, None)
+                        finally:
+                            # Also clean up when a browser disconnect cancels the stream.
+                            pending_approvals.pop(approval_id, None)
                         if not approved:
                             result = {"error": "User denied or approval timed out. Do not retry the same command unless the user asks."}
                             messages.append({"role": "tool", "tool_call_id": call_id, "name": name, "content": json.dumps(result)})
@@ -350,11 +361,24 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
                         result = await asyncio.to_thread(execute_tool, name, args)
                     except Exception as e:
                         result = {"error": f"{type(e).__name__}: {e}"}
-                    messages.append({"role": "tool", "tool_call_id": call_id, "name": name or "unknown", "content": json.dumps(result, ensure_ascii=False)[:20000]})
+                    messages.append({"role": "tool", "tool_call_id": call_id, "name": name or "unknown", "content": _serialize_tool_result(result)})
                     yield sse("tool_result", {"name": name, "result": result})
             yield sse("done", {"message": "Stopped after reaching the configured tool-call limit.", "messages": messages[-40:]})
     except Exception as e:
         yield sse("error", {"message": f"{type(e).__name__}: {e}"})
+
+def _serialize_tool_result(result: dict[str, Any], limit: int = 20000) -> str:
+    """Keep tool messages valid JSON even when the result is too large for the model context."""
+    serialized = json.dumps(result, ensure_ascii=False)
+    if len(serialized) <= limit:
+        return serialized
+    preview_limit = max(0, limit - 100)
+    return json.dumps({
+        "truncated": True,
+        "original_characters": len(serialized),
+        "preview": serialized[:preview_limit],
+    }, ensure_ascii=False)
+
 
 def execute_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(args, dict):
