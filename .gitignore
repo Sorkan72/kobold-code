@@ -1,0 +1,71 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+release/
+coverage/
+*.spec
+
+# Electron packaging
+*.asar
+*.dmg
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+
+# Local application settings and data
+koboldcode_settings.json
+*.local.json
+*.local.yaml
+*.local.yml
+
+# Logs and temporary files
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# IDEs and editors
+.vscode/
+.idea/
+*.code-workspace
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Git
+*.orig

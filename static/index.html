@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KoboldCode</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">K</div><div><div class="brand-name">KoboldCode</div><div class="brand-sub">LOCAL CODING AGENT</div></div></div>
+    <button id="new-chat" class="new-chat"><span>＋</span> New task</button>
+    <div class="side-label">WORKSPACE</div>
+    <div id="workspace-path" class="workspace-path">Loading workspace…</div>
+    <div id="file-tree" class="file-tree"></div>
+    <div class="sidebar-bottom">
+      <div id="connection-pill" class="connection-pill"><span class="dot"></span><span>Checking backend</span></div>
+      <button class="side-action" id="open-settings"><span>⚙</span> Settings</button>
+      <button class="side-action" id="open-diagnostics"><span>⌁</span> Backend diagnostics</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="crumb"><span class="crumb-muted">KoboldCode</span><span class="slash">/</span><span id="crumb-workspace">Workspace</span></div>
+      <div class="top-actions"><span class="model-chip" id="model-chip">Model not detected</span><button class="icon-button" id="refresh-files" title="Refresh files">↻</button></div>
+    </header>
+    <section class="content">
+      <div class="welcome" id="welcome">
+        <div class="welcome-kicker">KOBOLDCODE · AGENT WORKSPACE</div>
+        <h1>What are we building?</h1>
+        <p>Delegate a coding task. KoboldCode can inspect files, make changes, search code, and run approved commands against your local workspace.</p>
+        <div class="suggestions">
+          <button class="suggestion" data-prompt="Inspect this project and explain its architecture. Do not change files yet."><span class="suggestion-icon">⌕</span><span><b>Explore a codebase</b><small>Map the structure and key components</small></span><span class="suggestion-arrow">↗</span></button>
+          <button class="suggestion" data-prompt="Find likely bugs in this project. Inspect relevant files and report findings before making changes."><span class="suggestion-icon">⌁</span><span><b>Find and fix a bug</b><small>Investigate, patch, and verify</small></span><span class="suggestion-arrow">↗</span></button>
+          <button class="suggestion" data-prompt="Review the current git changes and identify potential issues. Do not modify files."><span class="suggestion-icon">⌘</span><span><b>Review changes</b><small>Check diffs and spot regressions</small></span><span class="suggestion-arrow">↗</span></button>
+        </div>
+      </div>
+      <div id="conversation" class="conversation hidden"></div>
+      <div id="activity" class="activity hidden"></div>
+      <div id="approval-host"></div>
+      <div class="composer-wrap">
+        <form id="composer" class="composer">
+          <textarea id="prompt" rows="1" placeholder="Ask KoboldCode to build, fix, or explain something…" autocomplete="off"></textarea>
+          <div class="composer-footer"><div class="composer-hint"><span class="kbd">Enter</span> to send <span class="hint-sep">·</span> <span class="kbd">Shift + Enter</span> for a new line</div><button id="send" type="submit" class="send-button">Run task <span>↑</span></button></div>
+        </form>
+        <div class="footer-note"><span class="secure-icon">◈</span> Local workspace · Shell commands require approval by default</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="settings-modal" class="modal hidden"><div class="modal-backdrop" data-close="settings"></div><div class="modal-card">
+  <div class="modal-heading"><div><div class="modal-eyebrow">CONFIGURATION</div><h2>Settings</h2></div><button class="close-button" data-close="settings">×</button></div>
+  <form id="settings-form">
+    <label>KoboldCpp base URL<input id="setting-url" placeholder="http://127.0.0.1:5001" required></label>
+    <label>API password / bearer token<input id="setting-key" type="password" placeholder="Optional; stored locally"></label>
+    <label>Workspace directory<input id="setting-workspace" placeholder="Absolute path to your project" required><small>File tools are confined to this directory.</small></label>
+    <label>Model name override<input id="setting-model" placeholder="Optional; KoboldCpp often ignores this"></label>
+    <div class="field-row"><label>Max output tokens<input id="setting-tokens" type="number" min="128" max="32768" step="128"></label><label>Temperature<input id="setting-temperature" type="number" min="0" max="2" step="0.1"></label></div>
+    <label class="toggle-row"><input id="setting-approval" type="checkbox"><span>Require approval before shell commands</span></label>
+    <label>Maximum agent tool rounds<input id="setting-rounds" type="number" min="1" max="30"></label>
+    <div class="modal-footer"><span id="settings-status" class="form-status"></span><button class="primary-button" type="submit">Save settings</button></div>
+  </form>
+</div></div>
+
+<div id="diagnostics-modal" class="modal hidden"><div class="modal-backdrop" data-close="diagnostics"></div><div class="modal-card diagnostics-card">
+  <div class="modal-heading"><div><div class="modal-eyebrow">CONNECTION INSPECTOR</div><h2>Backend diagnostics</h2></div><button class="close-button" data-close="diagnostics">×</button></div>
+  <p class="modal-description">KoboldCode checks the active KoboldCpp instance instead of assuming optional APIs are enabled.</p>
+  <div id="diagnostics-body" class="diagnostics-body"><div class="loading-line">Checking endpoints…</div></div>
+  <div class="modal-footer"><span class="form-status">KoboldCpp 1.123.1-compatible checks</span><button id="rerun-diagnostics" class="primary-button" type="button">Run checks again</button></div>
+</div></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

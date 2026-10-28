@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Web Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        #game {
+            background-color: #fff;
+            padding: 20px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        #message {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game">
+        <h1>Simple Clicker Game</h1>
+        <p>Click the button to earn points!</p>
+        <div id="score">Score: 0</div>
+        <button id="clickBtn">Click Me!</button>
+        <div id="message"></div>
+    </div>
+    <script>
+        let score = 0;
+        const scoreDisplay = document.getElementById('score');
+        const messageDisplay = document.getElementById('message');
+        const clickBtn = document.getElementById('clickBtn');
+
+        clickBtn.addEventListener('click', function() {
+            score++;
+            scoreDisplay.textContent = 'Score: ' + score;
+            
+            if (score % 5 === 0) {
+                messageDisplay.textContent = 'Great job! Keep clicking!';
+                messageDisplay.style.color = '#4CAF50';
+            } else {
+                messageDisplay.textContent = 'Nice try!';
+                messageDisplay.style.color = '#333';
+            }
+        });
+    </script>
+</body>
+</html>
