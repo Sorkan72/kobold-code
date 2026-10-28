@@ -243,6 +243,7 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
     messages.append({"role": "user", "content": inp.user_message})
     yield sse("status", {"text": "Connecting to KoboldCpp"})
     rounds = int(settings.get("max_tool_rounds", 12))
+    repeated_failures: dict[str, int] = {}
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=5.0), headers=headers) as client:
             for turn in range(rounds):
@@ -363,6 +364,24 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
                         result = {"error": f"{type(e).__name__}: {e}"}
                     messages.append({"role": "tool", "tool_call_id": call_id, "name": name or "unknown", "content": _serialize_tool_result(result)})
                     yield sse("tool_result", {"name": name, "result": result})
+                    if isinstance(result, dict) and result.get("error"):
+                        fingerprint = json.dumps(
+                            {"name": name, "args": args},
+                            sort_keys=True,
+                            ensure_ascii=False,
+                            default=str,
+                        )
+                        repeated_failures[fingerprint] = repeated_failures.get(fingerprint, 0) + 1
+                        if repeated_failures[fingerprint] >= 2:
+                            message = (
+                                f"Stopped after the same {name} call failed "
+                                f"{repeated_failures[fingerprint]} times. The tool error was: "
+                                f"{result['error']} Try a different approach instead of repeating "
+                                "the same operation."
+                            )
+                            yield sse("error", {"message": message})
+                            yield sse("done", {"message": message, "messages": messages[-40:]})
+                            return
             yield sse("done", {"message": "Stopped after reaching the configured tool-call limit.", "messages": messages[-40:]})
     except Exception as e:
         yield sse("error", {"message": f"{type(e).__name__}: {e}"})
