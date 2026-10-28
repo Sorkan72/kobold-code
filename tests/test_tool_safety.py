@@ -67,3 +67,26 @@ def test_tool_result_truncation_stays_valid_json():
     assert result["truncated"] is True
     assert result["original_characters"] > 300
     assert isinstance(result["preview"], str)
+
+def test_repeated_identical_tool_failure_is_detected():
+    seen = {}
+    args = {"path": "index.html", "old_text": "missing", "new_text": "replacement"}
+    error = {"error": "Expected old_text to occur exactly once, found 0. No change made."}
+
+    assert app._is_repeated_tool_failure("edit_file", args, error, seen) is False
+    assert app._is_repeated_tool_failure("edit_file", args, error, seen) is True
+
+
+def test_different_tool_args_do_not_trigger_repeated_failure_guard():
+    seen = {}
+    error = {"error": "File does not exist."}
+
+    assert app._is_repeated_tool_failure("read_file", {"path": "one.txt"}, error, seen) is False
+    assert app._is_repeated_tool_failure("read_file", {"path": "two.txt"}, error, seen) is False
+
+
+def test_successful_tool_result_does_not_count_as_failure():
+    seen = {}
+    assert app._is_repeated_tool_failure("edit_file", {"path": "index.html"}, {"ok": True}, seen) is False
+    assert seen == {}
+
