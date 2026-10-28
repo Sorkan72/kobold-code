@@ -364,27 +364,38 @@ async def agent_stream(inp: ChatInput, settings: dict[str, Any]) -> AsyncIterato
                         result = {"error": f"{type(e).__name__}: {e}"}
                     messages.append({"role": "tool", "tool_call_id": call_id, "name": name or "unknown", "content": _serialize_tool_result(result)})
                     yield sse("tool_result", {"name": name, "result": result})
-                    if isinstance(result, dict) and result.get("error"):
-                        fingerprint = json.dumps(
-                            {"name": name, "args": args},
-                            sort_keys=True,
-                            ensure_ascii=False,
-                            default=str,
+                    if _is_repeated_tool_failure(name, args, result, repeated_failures):
+                        message = (
+                            f"Stopped after the same {name} call failed repeatedly. "
+                            f"The tool error was: {result['error']} Try a different approach "
+                            "instead of repeating the same operation."
                         )
-                        repeated_failures[fingerprint] = repeated_failures.get(fingerprint, 0) + 1
-                        if repeated_failures[fingerprint] >= 2:
-                            message = (
-                                f"Stopped after the same {name} call failed "
-                                f"{repeated_failures[fingerprint]} times. The tool error was: "
-                                f"{result['error']} Try a different approach instead of repeating "
-                                "the same operation."
-                            )
-                            yield sse("error", {"message": message})
-                            yield sse("done", {"message": message, "messages": messages[-40:]})
-                            return
+                        yield sse("error", {"message": message})
+                        yield sse("done", {"message": message, "messages": messages[-40:]})
+                        return
             yield sse("done", {"message": "Stopped after reaching the configured tool-call limit.", "messages": messages[-40:]})
     except Exception as e:
         yield sse("error", {"message": f"{type(e).__name__}: {e}"})
+
+def _is_repeated_tool_failure(
+    name: str,
+    args: Any,
+    result: Any,
+    seen: dict[str, int],
+    threshold: int = 2,
+) -> bool:
+    """Detect the same failing tool call repeating within one agent task."""
+    if not isinstance(result, dict) or not result.get("error"):
+        return False
+    fingerprint = json.dumps(
+        {"name": name, "args": args},
+        sort_keys=True,
+        ensure_ascii=False,
+        default=str,
+    )
+    seen[fingerprint] = seen.get(fingerprint, 0) + 1
+    return seen[fingerprint] >= threshold
+
 
 def _serialize_tool_result(result: dict[str, Any], limit: int = 20000) -> str:
     """Keep tool messages valid JSON even when the result is too large for the model context."""
