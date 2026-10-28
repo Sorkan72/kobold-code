@@ -41,6 +41,18 @@ This is a working starter, not yet a feature-complete Claude Code/Codex clone. I
 
 KoboldCpp's API compatibility can vary by build and chat template. Diagnostics reports what the server exposes; tool calling must be verified with the specific model/template you use. API docs on your running instance are usually available at `http://127.0.0.1:5001/api`.
 
+## Development checks
+
+Install the development dependencies and run the automated checks:
+
+```sh
+python -m pip install -r requirements-dev.txt
+python -m compileall -q app.py
+python -m pytest -q
+```
+
+GitHub Actions runs the same compile and test checks for pushes and pull requests.
+
 ## Configuration
 
 The app binds to `127.0.0.1:8787` by default. It stores settings in `koboldcode_settings.json` in the app directory. Do not expose the app port to your LAN without adding authentication and reviewing the security model.
