@@ -53,9 +53,22 @@ function showApproval(data) {
     host.appendChild(card);
     const finish = async approved => {
       card.querySelectorAll("button").forEach(b => b.disabled = true);
-      try { await fetch(`/api/approve/${encodeURIComponent(data.id)}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({approved})}); } catch {}
-      card.remove();
-      resolve(approved);
+      try {
+        const response = await fetch(`/api/approve/${encodeURIComponent(data.id)}`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({approved})});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        card.remove();
+        resolve(approved);
+      } catch (error) {
+        card.querySelectorAll("button").forEach(button => button.disabled = false);
+        let notice = card.querySelector(".approval-error");
+        if (!notice) {
+          notice = document.createElement("div");
+          notice.className = "approval-error";
+          notice.setAttribute("role", "alert");
+          card.appendChild(notice);
+        }
+        notice.textContent = `Could not submit approval (${error.message}). Please try again.`;
+      }
     };
     card.querySelector(".approve").addEventListener("click", () => finish(true));
     card.querySelector(".deny").addEventListener("click", () => finish(false));
